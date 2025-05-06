@@ -11,10 +11,6 @@ const PORT = process.env.PORT || 3003;
 // Create an async function to start the server
 const startServer = async () => {
   try {
-    // Connect to database
-    await sequelize.authenticate();
-    console.log("Database connection established successfully");
-
     // Sync database models
     await sequelize.sync();
     console.log("Database models synchronized");
