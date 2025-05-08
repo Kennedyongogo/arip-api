@@ -4,7 +4,12 @@ const path = require("path");
 const app = express();
 
 // CORS configuration
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://38.242.243.113:4036", "http://localhost:3000"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  })
+);
 
 // Parse JSON bodies
 app.use(express.json());
