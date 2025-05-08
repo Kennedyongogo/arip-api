@@ -1,6 +1,10 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { Op } = require("sequelize");
 const User = require("../models/user");
+
+// JWT secret key from environment variables
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // JWT secret key - should be in environment variables in production
 const userController = {
@@ -10,14 +14,26 @@ const userController = {
       const { username, email, password, phoneNumber, latitude, longitude } =
         req.body;
 
+      console.log("Registration attempt for:", {
+        username,
+        email,
+        phoneNumber,
+        latitude,
+        longitude,
+      });
+
       // Check if user already exists
       const existingUser = await User.findOne({
         where: {
-          [User.sequelize.Op.or]: [{ email: email }, { username: username }],
+          [Op.or]: [{ email: email }, { username: username }],
         },
       });
 
       if (existingUser) {
+        console.log("User already exists:", {
+          existingEmail: existingUser.email === email,
+          existingUsername: existingUser.username === username,
+        });
         return res.status(400).json({
           success: false,
           message: "User with this email or username already exists",
@@ -38,6 +54,12 @@ const userController = {
         longitude,
       });
 
+      console.log("User created successfully:", {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      });
+
       // Generate JWT token
       const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
         expiresIn: "24h",
@@ -53,7 +75,13 @@ const userController = {
         token,
       });
     } catch (error) {
-      console.error("Registration error:", error);
+      console.error("Registration error details:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        code: error.code,
+      });
+
       res.status(500).json({
         success: false,
         message: "Error registering user",
