@@ -138,6 +138,27 @@ const userController = {
       });
     }
   },
+
+  // Get all users
+  getAllUsers: async (req, res) => {
+    try {
+      const users = await User.findAll({
+        attributes: { exclude: ["password"] }, // Exclude password from results
+      });
+
+      res.status(200).json({
+        success: true,
+        data: users,
+      });
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error fetching users",
+        error: error.message,
+      });
+    }
+  },
 };
 
 module.exports = userController;
