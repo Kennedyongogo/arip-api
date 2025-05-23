@@ -1,8 +1,8 @@
 const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database"); // Adjust according to your setup
+const sequelize = require("../config/database");
 
-const User = sequelize.define(
-  "user",
+const Admin = sequelize.define(
+  "admin",
   {
     id: {
       type: DataTypes.UUID,
@@ -18,9 +18,6 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
-      validate: {
-        isEmail: true,
-      },
     },
     password: {
       type: DataTypes.STRING,
@@ -30,7 +27,6 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
       validate: {
-        // Basic phone number validation
         is: /^\+?[\d\s-()]+$/,
       },
     },
@@ -54,14 +50,10 @@ const User = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
-    role: {
-      type: DataTypes.ENUM("reporter", "editor"),
-      defaultValue: "reporter",
-    },
   },
   {
     timestamps: true,
   }
 );
 
-module.exports = User;
+module.exports = Admin;
