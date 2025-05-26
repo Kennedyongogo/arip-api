@@ -6,7 +6,11 @@ const app = express();
 // CORS configuration
 app.use(
   cors({
-    origin: ["http://38.242.243.113:4036", "http://localhost:3000"],
+    origin: [
+      "http://38.242.243.113:4036",
+      "http://localhost:3000",
+      "http://localhost:3001",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
