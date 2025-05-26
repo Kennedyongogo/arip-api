@@ -42,7 +42,23 @@ const News = sequelize.define(
       allowNull: true,
     },
     category: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM(
+        "Politics",
+        "Business & Economy",
+        "Technology",
+        "Health",
+        "Education",
+        "Science",
+        "Environment",
+        "Sports",
+        "Entertainment",
+        "Lifestyle",
+        "Crime & Law",
+        "Religion & Spirituality",
+        "International (World)",
+        "Local/Regional News",
+        "Editorial & Opinion"
+      ),
       allowNull: false,
     },
     tags: {

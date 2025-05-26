@@ -5,11 +5,13 @@ const Admin = require("../models/admin");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { sendEmail } = require("../utils/emailService");
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, "../uploads");
+    // Use project root uploads directory
+    const uploadDir = path.join(process.cwd(), "uploads");
     // Create uploads directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -60,6 +62,34 @@ const newsController = {
           sourceVerification,
         } = req.body;
 
+        // Validate category
+        const validCategories = [
+          "Politics",
+          "Business & Economy",
+          "Technology",
+          "Health",
+          "Education",
+          "Science",
+          "Environment",
+          "Sports",
+          "Entertainment",
+          "Lifestyle",
+          "Crime & Law",
+          "Religion & Spirituality",
+          "International (World)",
+          "Local/Regional News",
+          "Editorial & Opinion",
+        ];
+
+        if (!validCategories.includes(category)) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid category. Please select from the valid categories.",
+            validCategories: validCategories,
+          });
+        }
+
         // Get reporter ID from authenticated user
         const reporterId = req.user.id;
 
@@ -83,6 +113,55 @@ const newsController = {
           status: "pending", // Initial status
         });
 
+        // Get reporter details
+        const reporter = await User.findByPk(reporterId);
+
+        // Get all admin emails
+        const admins = await Admin.findAll({
+          attributes: ["email", "username"],
+        });
+
+        // Prepare email content
+        const emailSubject = `New News Article Pending Approval: ${title}`;
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #19bdb7;">New Article for Review</h2>
+            <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
+              <p style="margin: 10px 0;"><strong>Title:</strong> ${title}</p>
+              <p style="margin: 10px 0;"><strong>Category:</strong> ${category}</p>
+              <p style="margin: 10px 0;"><strong>Reporter:</strong> ${
+                reporter.username
+              } (${reporter.email})</p>
+              ${
+                sourceVerification
+                  ? `<p style="margin: 10px 0;"><strong>Source Verification:</strong> ${sourceVerification}</p>`
+                  : ""
+              }
+              <p style="margin: 10px 0;"><strong>Tags:</strong> ${JSON.parse(
+                tags
+              ).join(", ")}</p>
+              <p style="margin: 10px 0;"><strong>Content Preview:</strong> ${content.substring(
+                0,
+                200
+              )}...</p>
+              ${
+                mediaUrl
+                  ? `<p style="margin: 10px 0;"><strong>Media:</strong> ${mediaUrl}</p>`
+                  : ""
+              }
+            </div>
+            <p style="margin-top: 20px; color: #666;">Please review and take action on this article at your earliest convenience.</p>
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 12px;">
+              <p>This is an automated notification from the ARIP News System.</p>
+            </div>
+          </div>
+        `;
+
+        // Send email to all admins
+        for (const admin of admins) {
+          await sendEmail(admin.email, emailSubject, emailHtml);
+        }
+
         res.status(201).json({
           success: true,
           data: news,
@@ -105,7 +184,15 @@ const newsController = {
       const { id } = req.params;
       const adminId = req.user.id; // Get admin ID from authenticated user
 
-      const news = await News.findByPk(id);
+      const news = await News.findByPk(id, {
+        include: [
+          {
+            model: User,
+            as: "reporter",
+            attributes: ["id", "username", "email"],
+          },
+        ],
+      });
 
       if (!news) {
         return res.status(404).json({
@@ -126,6 +213,27 @@ const newsController = {
         approvedBy: adminId,
         publishedAt: new Date(),
       });
+
+      // Send email notification to the reporter
+      const emailSubject = `Your News Article Has Been Approved: ${news.title}`;
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #19bdb7;">Great News! Your Article Has Been Approved</h2>
+          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
+            <p style="margin: 10px 0;"><strong>Title:</strong> ${news.title}</p>
+            <p style="margin: 10px 0;"><strong>Category:</strong> ${
+              news.category
+            }</p>
+            <p style="margin: 10px 0;"><strong>Published At:</strong> ${new Date().toLocaleString()}</p>
+          </div>
+          <p style="margin-top: 20px; color: #666;">Your article is now live and visible to all users. Thank you for contributing to our platform!</p>
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 12px;">
+            <p>This is an automated notification from the ARIP News System.</p>
+          </div>
+        </div>
+      `;
+
+      await sendEmail(news.reporter.email, emailSubject, emailHtml);
 
       res.status(200).json({
         success: true,
@@ -149,7 +257,15 @@ const newsController = {
       const { rejectionReason } = req.body;
       const adminId = req.user.id;
 
-      const news = await News.findByPk(id);
+      const news = await News.findByPk(id, {
+        include: [
+          {
+            model: User,
+            as: "reporter",
+            attributes: ["id", "username", "email"],
+          },
+        ],
+      });
 
       if (!news) {
         return res.status(404).json({
@@ -170,6 +286,25 @@ const newsController = {
         approvedBy: adminId,
         rejectionReason,
       });
+
+      // Send email notification to the reporter
+      const emailSubject = `Your News Article Requires Changes: ${news.title}`;
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #e74c3c;">Article Review Update</h2>
+          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
+            <p style="margin: 10px 0;"><strong>Title:</strong> ${news.title}</p>
+            <p style="margin: 10px 0;"><strong>Category:</strong> ${news.category}</p>
+            <p style="margin: 10px 0;"><strong>Rejection Reason:</strong> ${rejectionReason}</p>
+          </div>
+          <p style="margin-top: 20px; color: #666;">Please review the feedback and make the necessary changes to your article. You can submit a new version after making the required modifications.</p>
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 12px;">
+            <p>This is an automated notification from the ARIP News System.</p>
+          </div>
+        </div>
+      `;
+
+      await sendEmail(news.reporter.email, emailSubject, emailHtml);
 
       res.status(200).json({
         success: true,
